@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
-  auth, db, storage, googleProvider, signInWithPopup, signOut, onAuthStateChanged, 
+  auth, db, storage, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, 
   collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, Timestamp, addDoc, getDocs, handleFirestoreError, OperationType,
   ref, uploadBytes, getDownloadURL, limit
 } from './firebase';

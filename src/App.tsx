@@ -168,26 +168,36 @@ export default function App() {
 
   // Auth Listener
   useEffect(() => {
+    console.log("Auth listener initialized");
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      console.log("Auth state changed:", currentUser ? `User logged in: ${currentUser.uid}` : "User logged out");
       setUser(currentUser);
       setAuthReady(true);
       if (currentUser) {
+        console.log("Fetching user profile for:", currentUser.uid);
         const userRef = doc(db, 'users', currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (!userSnap.exists()) {
-          await setDoc(userRef, {
-            displayName: currentUser.displayName,
-            email: currentUser.email,
-            photoURL: currentUser.photoURL,
-            householdId: null
-          });
-        } else {
-          const userData = userSnap.data();
-          if (userData.householdId) {
-            fetchHousehold(userData.householdId);
+        try {
+          const userSnap = await getDoc(userRef);
+          if (!userSnap.exists()) {
+            console.log("Creating new user profile");
+            await setDoc(userRef, {
+              displayName: currentUser.displayName,
+              email: currentUser.email,
+              photoURL: currentUser.photoURL,
+              householdId: null
+            });
           } else {
-            setLoading(false);
+            const userData = userSnap.data();
+            console.log("User profile found, householdId:", userData.householdId);
+            if (userData.householdId) {
+              fetchHousehold(userData.householdId);
+            } else {
+              setLoading(false);
+            }
           }
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+          setLoading(false);
         }
       } else {
         setHousehold(null);
@@ -262,10 +272,20 @@ export default function App() {
   }, [household, user]);
 
   const handleLogin = async () => {
+    console.log("Starting login flow...");
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error("Login failed", error);
+      const result = await signInWithPopup(auth, googleProvider);
+      console.log("Login success result:", result.user.uid);
+    } catch (error: any) {
+      console.error("Login failed with error:", error.code, error.message);
+      if (error.code === 'auth/popup-closed-by-user') {
+        console.warn("Popup was closed before login completed.");
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        console.warn("Multiple popup requests detected.");
+      } else if (error.code === 'auth/network-request-failed') {
+        console.error("Network error - check your connection or Authorized Domains.");
+      }
+      alert(`Login failed: ${error.message}. Please ensure you are not blocking popups or third-party cookies.`);
     }
   };
 

@@ -975,3 +975,20 @@ export default function App() {
             <div className="flex flex-col">
               <span className="text-pink-500 text-xl font-black leading-none">{items.filter(i => i.status === 'completed').length}</span>
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Done</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2 pr-2">
+            <div className="flex -space-x-2">
+              {household.members.slice(0, 3).map((m, i) => (
+                <div key={i} className="w-8 h-8 rounded-full bg-slate-800 border-2 border-slate-900 flex items-center justify-center text-[10px] font-bold text-white">
+                  {i === 0 ? '❤️' : '✨'}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

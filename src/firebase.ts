@@ -4,9 +4,15 @@ import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, deleteDoc, on
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
+const isPreview = window.location.hostname.includes('run.app') || window.location.hostname === 'localhost';
+const config = {
+  ...firebaseConfig,
+  authDomain: isPreview ? window.location.hostname : firebaseConfig.authDomain
+};
+
+const app = initializeApp(config);
 export const auth = getAuth(app);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = getFirestore(app, config.firestoreDatabaseId);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 

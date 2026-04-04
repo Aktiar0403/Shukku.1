@@ -1,0 +1,11 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /households/{householdId}/items/{allPaths=**} {
+      // Allow access if the user is a member of the household
+      // Note: We need to fetch the household document from Firestore to check membership
+      allow read, write: if request.auth != null && 
+        request.auth.uid in firestore.get(/databases/(default)/documents/households/$(householdId)).data.members;
+    }
+  }
+}

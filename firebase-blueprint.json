@@ -1,0 +1,70 @@
+{
+  "entities": {
+    "Household": {
+      "title": "Household",
+      "description": "A group of users sharing lists and reminders.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the household" },
+        "members": { "type": "array", "items": { "type": "string" }, "description": "List of user UIDs in this household" },
+        "inviteCode": { "type": "string", "description": "Code to join this household" }
+      },
+      "required": ["name", "members", "inviteCode"]
+    },
+    "Item": {
+      "title": "Item",
+      "description": "A list item (grocery, med, stationary) or reminder.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "The content of the item" },
+        "category": { "type": "string", "enum": ["grocery", "meds", "stationary", "reminder"], "description": "Category of the item" },
+        "status": { "type": "string", "enum": ["pending", "completed"], "description": "Current status of the item" },
+        "addedBy": { "type": "string", "description": "UID of the user who added the item" },
+        "completedBy": { "type": "string", "description": "UID of the user who completed the item" },
+        "imageUrl": { "type": "string", "description": "Optional image of the item" },
+        "reminderTime": { "type": "string", "format": "date-time", "description": "When to send a reminder notification" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the item was created" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "When the item was last updated" }
+      },
+      "required": ["text", "category", "status", "addedBy", "createdAt"]
+    },
+    "FrequentItem": {
+      "title": "Frequent Item",
+      "description": "An item that is frequently added to the list.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "category": { "type": "string" },
+        "count": { "type": "number" }
+      },
+      "required": ["text", "category"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile information.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "householdId": { "type": "string", "description": "ID of the household the user belongs to" },
+        "pushSubscription": { "type": "object", "description": "Web push subscription object" }
+      },
+      "required": ["displayName", "email"]
+    }
+  },
+  "firestore": {
+    "/households/{householdId}": {
+      "schema": "Household",
+      "description": "Main household document"
+    },
+    "/households/{householdId}/items/{itemId}": {
+      "schema": "Item",
+      "description": "Items within a household"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    }
+  }
+}

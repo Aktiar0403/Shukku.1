@@ -40,6 +40,8 @@ jobs:
         run: |
           echo "=== Checking assets ==="
           ls android/app/src/main/assets/
+          echo "=== plugins ==="
+          cat android/app/src/main/assets/capacitor.plugins.json
           echo "=== index.html ==="
           cat android/app/src/main/assets/public/index.html
 

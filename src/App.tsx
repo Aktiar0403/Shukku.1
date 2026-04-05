@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 
 import { 
   auth, db, storage, googleProvider, signInWithPopup, signOut, onAuthStateChanged, 
@@ -278,19 +280,23 @@ export default function App() {
 
 const handleLogin = async () => {
   try {
-    await signInWithPopup(auth, googleProvider);
-  } catch (error: any) {
-    // If popup fails (common in WebView), try redirect
-    if (
-      error.code === 'auth/popup-blocked' ||
-      error.code === 'auth/popup-closed-by-user' ||
-      error.code === 'auth/cancelled-popup-request'
-    ) {
-      await signInWithRedirect(auth, googleProvider);
+    if (Capacitor.isNativePlatform()) {
+      // Native Android - use native Google Sign In
+      const result = await FirebaseAuthentication.signInWithGoogle();
+      if (!result.credential?.idToken) {
+        alert('No ID token received');
+        return;
+      }
+      const credential = GoogleAuthProvider.credential(result.credential.idToken);
+      const userCredential = await signInWithCredential(auth, credential);
+      alert('Signed in as: ' + userCredential.user.email);
     } else {
-      console.error('Login failed:', error);
-      alert(`Login failed: ${error.message}`);
+      // Web browser - use popup
+      await signInWithPopup(auth, googleProvider);
     }
+  } catch (error: any) {
+    console.error('Login failed:', error);
+    alert(`Login failed: ${error.code} - ${error.message}`);
   }
 };
 

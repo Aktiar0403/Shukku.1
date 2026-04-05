@@ -86,9 +86,9 @@ jobs:
       - name: Verify APK signature
         run: |
           cd android/app/build/outputs/apk/debug
-          unzip -o app-debug.apk -d apk_contents META-INF/
-          ls apk_contents/META-INF/
-          $JAVA_HOME/bin/keytool -printcert -file apk_contents/META-INF/CERT.RSA | grep SHA1
+          unzip -o app-debug.apk -d apk_contents
+          find apk_contents/META-INF/ -name "*.RSA" -o -name "*.DSA" -o -name "*.EC"
+          $JAVA_HOME/bin/keytool -printcert -file $(find apk_contents/META-INF/ -name "*.RSA" -o -name "*.DSA" | head -1) | grep SHA1
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:

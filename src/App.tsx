@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 
 import { 
-  auth, db, storage, googleProvider, signInWithPopup, signOut, onAuthStateChanged, 
+  auth, db, storage, googleProvider, signInWithPopup, signInWithCredential, GoogleAuthProvider, signOut, onAuthStateChanged, 
   collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, Timestamp, addDoc, getDocs, handleFirestoreError, OperationType,
   ref, uploadBytes, getDownloadURL, limit
 } from './firebase';
@@ -279,15 +279,18 @@ export default function App() {
   }, [household, user]);
 const handleLogin = async () => {
   try {
+    alert('handleLogin called, isNative: ' + Capacitor.isNativePlatform());
     if (Capacitor.isNativePlatform()) {
+      alert('calling signInWithGoogle...');
       const result = await FirebaseAuthentication.signInWithGoogle();
+      alert('result: ' + JSON.stringify(result?.user?.email));
       const credential = GoogleAuthProvider.credential(result.credential?.idToken);
       await signInWithCredential(auth, credential);
     } else {
       await signInWithPopup(auth, googleProvider);
     }
   } catch (error: any) {
-    alert(`${error.code} - ${error.message}`);
+    alert(`Error: ${error.code} - ${error.message}`);
   }
 };
 

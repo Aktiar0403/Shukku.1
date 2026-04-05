@@ -281,17 +281,21 @@ export default function App() {
 const handleLogin = async () => {
   try {
     if (Capacitor.isNativePlatform()) {
-      // Native Android - use native Google Sign In
-      const result = await FirebaseAuthentication.signInWithGoogle();
+      const result = await FirebaseAuthentication.signInWithGoogle({
+        customParameters: [
+          {
+            key: 'client_id',
+            value: '553665072411-o357vn2e1e83r9o3pvgr5rgrlos209r3.apps.googleusercontent.com'
+          }
+        ]
+      });
       if (!result.credential?.idToken) {
         alert('No ID token received');
         return;
       }
       const credential = GoogleAuthProvider.credential(result.credential.idToken);
-      const userCredential = await signInWithCredential(auth, credential);
-      alert('Signed in as: ' + userCredential.user.email);
+      await signInWithCredential(auth, credential);
     } else {
-      // Web browser - use popup
       await signInWithPopup(auth, googleProvider);
     }
   } catch (error: any) {

@@ -173,13 +173,7 @@ export default function App() {
     console.log("Auth listener initialized");
     
     // Handle redirect result if user was redirected back
-    getRedirectResult(auth).then((result) => {
-      if (result) {
-        console.log("Redirect login success:", result.user.uid);
-      }
-    }).catch((error) => {
-      console.error("Redirect login error:", error);
-    });
+
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       console.log("Auth state changed:", currentUser ? `User logged in: ${currentUser.uid}` : "User logged out");

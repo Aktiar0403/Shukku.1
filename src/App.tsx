@@ -280,8 +280,17 @@ const handleLogin = async () => {
   try {
     await signInWithPopup(auth, googleProvider);
   } catch (error: any) {
-    console.error('Login failed:', error);
-    alert(`Login failed: ${error.message}`);
+    // If popup fails (common in WebView), try redirect
+    if (
+      error.code === 'auth/popup-blocked' ||
+      error.code === 'auth/popup-closed-by-user' ||
+      error.code === 'auth/cancelled-popup-request'
+    ) {
+      await signInWithRedirect(auth, googleProvider);
+    } else {
+      console.error('Login failed:', error);
+      alert(`Login failed: ${error.message}`);
+    }
   }
 };
 

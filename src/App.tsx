@@ -277,13 +277,17 @@ export default function App() {
       return () => unsubscribe();
     }
   }, [household, user]);
-
 const handleLogin = async () => {
   try {
-    await signInWithPopup(auth, googleProvider);
+    if (Capacitor.isNativePlatform()) {
+      const result = await FirebaseAuthentication.signInWithGoogle();
+      const credential = GoogleAuthProvider.credential(result.credential?.idToken);
+      await signInWithCredential(auth, credential);
+    } else {
+      await signInWithPopup(auth, googleProvider);
+    }
   } catch (error: any) {
-    console.error('Login failed:', error);
-    alert(`Login failed: ${error.message}`);
+    alert(`${error.code} - ${error.message}`);
   }
 };
 

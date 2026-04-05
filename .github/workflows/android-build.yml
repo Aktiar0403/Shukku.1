@@ -36,6 +36,9 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android --inline
 
+      - name: Show capacitor.build.gradle after sync
+        run: cat android/app/capacitor.build.gradle
+
       - name: Verify web files copied into APK assets
         run: |
           echo "=== Checking assets ==="

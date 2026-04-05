@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/__/auth/(.*)",
+      "destination": "https://pairsync-app.firebaseapp.com/__/auth/$1"
+    }
+  ]
+}

@@ -85,8 +85,7 @@ jobs:
           gradle assembleDebug
       - name: Check APK signature
         run: |
-          cd android
-          keytool -printcert -jarfile app/build/outputs/apk/debug/app-debug.apk | grep SHA1
+          unzip -p android/app/build/outputs/apk/debug/app-debug.apk META-INF/*.RSA | keytool -printcert | grep SHA1
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

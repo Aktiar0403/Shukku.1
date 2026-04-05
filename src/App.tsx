@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { 
-  auth, db, storage, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, 
+  auth, db, storage, googleProvider, signInWithPopup, signOut, onAuthStateChanged, 
   collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, Timestamp, addDoc, getDocs, handleFirestoreError, OperationType,
   ref, uploadBytes, getDownloadURL, limit
 } from './firebase';
@@ -281,30 +283,22 @@ export default function App() {
     }
   }, [household, user]);
 
-  const handleLogin = async (useRedirect = false) => {
-    console.log(`Starting login flow (useRedirect: ${useRedirect})...`);
-    try {
-      if (useRedirect) {
-        await signInWithRedirect(auth, googleProvider);
-      } else {
-        const result = await signInWithPopup(auth, googleProvider);
-        console.log("Login success result:", result.user.uid);
-      }
-    } catch (error: any) {
-      console.error("Login failed with error:", error.code, error.message);
-      if (error.code === 'auth/popup-closed-by-user') {
-        console.warn("Popup was closed before login completed.");
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        console.warn("Multiple popup requests detected.");
-      } else if (error.code === 'auth/network-request-failed') {
-        console.error("Network error - check your connection or Authorized Domains.");
-        alert("Network error detected. This is often caused by blocked third-party cookies or ad-blockers. Trying redirect method instead...");
-        handleLogin(true); // Auto-retry with redirect
-      } else {
-        alert(`Login failed: ${error.message}. Please ensure you are not blocking popups or third-party cookies.`);
-      }
+ const handleLogin = async () => {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const result = await FirebaseAuthentication.signInWithGoogle();
+      const credential = GoogleAuthProvider.credential(
+        result.credential?.idToken
+      );
+      await signInWithCredential(auth, credential);
+    } else {
+      await signInWithPopup(auth, googleProvider);
     }
-  };
+  } catch (error: any) {
+    console.error('Login failed:', error);
+    alert(`Login failed: ${error.message}`);
+  }
+};
 
   const handleLogout = async () => {
     try {
@@ -554,12 +548,12 @@ export default function App() {
         
         <div className="flex flex-col gap-4 w-full max-w-xs">
           <button
-            onClick={() => handleLogin(false)}
-            className="flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all active:scale-95 shadow-xl hover:shadow-2xl w-full"
-          >
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-6 h-6" />
-            Sign in with Google
-          </button>
+  onClick={handleLogin}
+  className="flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all active:scale-95 shadow-xl hover:shadow-2xl w-full"
+>
+  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-6 h-6" />
+  Sign in with Google
+</button>
 
           <div className="flex items-center gap-2 my-2">
             <div className="h-px bg-slate-200 flex-1"></div>

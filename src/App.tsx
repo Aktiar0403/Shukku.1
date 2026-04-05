@@ -281,26 +281,14 @@ export default function App() {
 const handleLogin = async () => {
   try {
     if (Capacitor.isNativePlatform()) {
-      const result = await FirebaseAuthentication.signInWithGoogle({
-        customParameters: [
-          {
-            key: 'client_id',
-            value: '553665072411-o357vn2e1e83r9o3pvgr5rgrlos209r3.apps.googleusercontent.com'
-          }
-        ]
-      });
-      if (!result.credential?.idToken) {
-        alert('No ID token received');
-        return;
-      }
-      const credential = GoogleAuthProvider.credential(result.credential.idToken);
-      await signInWithCredential(auth, credential);
+      alert('About to call signInWithGoogle...');
+      const result = await FirebaseAuthentication.signInWithGoogle();
+      alert('Result: ' + JSON.stringify(result));
     } else {
       await signInWithPopup(auth, googleProvider);
     }
   } catch (error: any) {
-    console.error('Login failed:', error);
-    alert(`Login failed: ${error.code} - ${error.message}`);
+    alert(`Error code: ${error.code}\nMessage: ${error.message}\nFull: ${JSON.stringify(error)}`);
   }
 };
 

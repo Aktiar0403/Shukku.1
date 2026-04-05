@@ -10,8 +10,10 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
-export { signInWithPopup,signInWithCredential, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, Timestamp, addDoc, getDocFromServer, getDocs, limit, ref, uploadBytes, getDownloadURL };
+export { GoogleAuthProvider, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged, collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, Timestamp, addDoc, getDocFromServer, getDocs, limit, ref, uploadBytes, getDownloadURL };
 export type { User };
+
+
 
 // Test connection
 async function testConnection() {

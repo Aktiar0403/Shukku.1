@@ -8,7 +8,7 @@ import type { User } from './firebase';
 import { 
   ShoppingBasket, Pill, PenTool, Bell, Plus, CheckCircle2, Circle, Trash2, 
   LogOut, Users, Copy, Check, ChevronRight, Loader2, Home, Settings, Camera,
-  History, Sparkles, Heart, Image as ImageIcon, X, Search
+  History, Sparkles, Heart, Image as ImageIcon, X, Search, ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -552,13 +552,33 @@ export default function App() {
           The most beautiful way for couples to stay organized together.
         </p>
         
-        <button
-          onClick={handleLogin}
-          className="flex items-center gap-3 bg-slate-900 text-white px-10 py-5 rounded-2xl font-bold hover:bg-slate-800 transition-all active:scale-95 shadow-xl hover:shadow-2xl"
-        >
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-6 h-6" />
-          Get Started as a Pair
-        </button>
+        <div className="flex flex-col gap-4 w-full max-w-xs">
+          <button
+            onClick={() => handleLogin(false)}
+            className="flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all active:scale-95 shadow-xl hover:shadow-2xl w-full"
+          >
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-6 h-6" />
+            Sign in with Google
+          </button>
+
+          <div className="flex items-center gap-2 my-2">
+            <div className="h-px bg-slate-200 flex-1"></div>
+            <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Trouble signing in?</span>
+            <div className="h-px bg-slate-200 flex-1"></div>
+          </div>
+
+          <button
+            onClick={() => window.open(window.location.href, '_blank')}
+            className="flex items-center justify-center gap-2 bg-white border-2 border-slate-200 text-slate-600 px-8 py-4 rounded-2xl font-bold hover:bg-slate-50 transition-all active:scale-95 w-full"
+          >
+            <ExternalLink className="w-5 h-5" />
+            Open in New Tab
+          </button>
+          
+          <p className="text-[10px] text-slate-400 mt-2">
+            If you see "localhost refused to connect", please use the <b>Open in New Tab</b> button above.
+          </p>
+        </div>
       </div>
     );
   }

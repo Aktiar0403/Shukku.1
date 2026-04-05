@@ -279,18 +279,15 @@ export default function App() {
   }, [household, user]);
 const handleLogin = async () => {
   try {
-    alert('handleLogin called, isNative: ' + Capacitor.isNativePlatform());
     if (Capacitor.isNativePlatform()) {
-      alert('calling signInWithGoogle...');
       const result = await FirebaseAuthentication.signInWithGoogle();
-      alert('result: ' + JSON.stringify(result?.user?.email));
       const credential = GoogleAuthProvider.credential(result.credential?.idToken);
       await signInWithCredential(auth, credential);
     } else {
       await signInWithPopup(auth, googleProvider);
     }
   } catch (error: any) {
-    alert(`Error: ${error.code} - ${error.message}`);
+    console.error('Login failed:', error);
   }
 };
 

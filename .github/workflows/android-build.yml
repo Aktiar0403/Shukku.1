@@ -85,9 +85,10 @@ jobs:
           gradle assembleDebug
       - name: Verify APK signature
         run: |
-          $JAVA_HOME/bin/keytool -printcert \
-            -jarfile android/app/build/outputs/apk/debug/app-debug.apk \
-            2>/dev/null | grep SHA1 || echo "Could not read cert"
+          cd android/app/build/outputs/apk/debug
+          unzip -o app-debug.apk -d apk_contents META-INF/
+          ls apk_contents/META-INF/
+          $JAVA_HOME/bin/keytool -printcert -file apk_contents/META-INF/CERT.RSA | grep SHA1
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

@@ -89,6 +89,9 @@ jobs:
           unzip -o app-debug.apk -d apk_contents
           find apk_contents/META-INF/ -name "*.RSA" -o -name "*.DSA" -o -name "*.EC"
           $JAVA_HOME/bin/keytool -printcert -file $(find apk_contents/META-INF/ -name "*.RSA" -o -name "*.DSA" | head -1) | grep SHA1
+
+      - name: Check credentials version
+        run: cat android/variables.gradle
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:

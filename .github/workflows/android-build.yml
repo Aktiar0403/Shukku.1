@@ -34,7 +34,7 @@ jobs:
         run: npm run build
 
       - name: Sync Capacitor
-        run: npx cap sync android
+        run: npx cap sync android --inline
 
       - name: Verify web files copied into APK assets
         run: |

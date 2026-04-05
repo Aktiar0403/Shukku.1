@@ -4,6 +4,10 @@ const config: CapacitorConfig = {
   appId: 'com.shukkuu.app',
   appName: 'Shukkuu',
   webDir: 'dist',
+  server: {
+    url: 'https://shukku-1.vercel.app',
+    cleartext: true
+  },
   plugins: {
     FirebaseAuthentication: {
       skipNativeAuth: false,

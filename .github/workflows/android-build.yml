@@ -68,7 +68,17 @@ jobs:
         with:
           gradle-version: '8.14.3'
           wrapper-validation-enabled: false
-
+          
+      - name: Check what keystore gradle will use
+        run: |
+          echo "=== Default debug keystore ==="
+          keytool -list -v \
+            -keystore ~/.android/debug.keystore \
+            -alias androiddebugkey \
+            -storepass android 2>/dev/null | grep -E "SHA1|SHA256|Owner"
+          echo "=== APK signer check ==="
+          ls -la ~/.android/
+          
       - name: Build with Gradle
         run: |
           cd android

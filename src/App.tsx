@@ -280,15 +280,10 @@ export default function App() {
 
 const handleLogin = async () => {
   try {
-    if (Capacitor.isNativePlatform()) {
-      alert('About to call signInWithGoogle...');
-      const result = await FirebaseAuthentication.signInWithGoogle();
-      alert('Result: ' + JSON.stringify(result));
-    } else {
-      await signInWithPopup(auth, googleProvider);
-    }
+    await signInWithPopup(auth, googleProvider);
   } catch (error: any) {
-    alert(`Error code: ${error.code}\nMessage: ${error.message}\nFull: ${JSON.stringify(error)}`);
+    console.error('Login failed:', error);
+    alert(`Login failed: ${error.message}`);
   }
 };
 

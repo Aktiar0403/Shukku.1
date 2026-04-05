@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "553665072411",
+    "project_id": "pairsync-app",
+    "storage_bucket": "pairsync-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:553665072411:android:4b8a328fbdbf24c7a8d7be",
+        "android_client_info": {
+          "package_name": "com.shukkuu.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "553665072411-euielnk3q77pnde1ifiplo8rueb7q6e0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.shukkuu.app",
+            "certificate_hash": "e8e29a9b3195b535e58b5e05d74a9dc97b3358bc"
+          }
+        },
+        {
+          "client_id": "553665072411-o357vn2e1e83r9o3pvgr5rgrlos209r3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB-FzfCw0a-6INb1TiP-suzLvpyHHDY4qM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "553665072411-o357vn2e1e83r9o3pvgr5rgrlos209r3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

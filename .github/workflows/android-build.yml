@@ -33,8 +33,18 @@ jobs:
       - name: Build Web App
         run: npm run build
 
+      - name: Verify build output
+        run: |
+          echo "=== dist/index.html ==="
+          cat dist/index.html
+
       - name: Sync Capacitor
         run: npx cap sync android
+
+      - name: Verify assets copied
+        run: |
+          echo "=== android index.html ==="
+          cat android/app/src/main/assets/public/index.html
 
       - name: Restore fixed keystore
         run: |

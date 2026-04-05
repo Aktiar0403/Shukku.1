@@ -1,0 +1,29 @@
+name: Generate Keystore
+
+on:
+  workflow_dispatch:
+
+jobs:
+  keygen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate debug keystore
+        run: |
+          keytool -genkey -v \
+            -keystore debug.keystore \
+            -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 \
+            -validity 10000 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Print SHA1
+        run: |
+          keytool -list -v \
+            -keystore debug.keystore \
+            -alias androiddebugkey \
+            -storepass android | grep SHA1
+
+      - name: Print base64
+        run: base64 -w 0 debug.keystore && echo ""

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { 
-  auth, db, storage, googleProvider, signInWithPopup, signOut, onAuthStateChanged, 
+  auth, db, storage, googleProvider, signInWithPopup, signInWithCredential, GoogleAuthProvider, signOut, onAuthStateChanged, 
   collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, where, 
   orderBy, serverTimestamp, Timestamp, addDoc, getDocs, handleFirestoreError, OperationType,
   ref, uploadBytes, getDownloadURL, limit
@@ -811,12 +813,18 @@ export default function App() {
 
   // ── Auth handlers ──
   const handleLogin = async () => {
-    try {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const result = await FirebaseAuthentication.signInWithGoogle();
+      const credential = GoogleAuthProvider.credential(result.credential?.idToken);
+      await signInWithCredential(auth, credential);
+    } else {
       await signInWithPopup(auth, googleProvider);
-    } catch (error: any) {
-      console.error('Login failed:', error);
     }
-  };
+  } catch (error: any) {
+    console.error('Login failed:', error);
+  }
+};
 
   const handleLogout = async () => {
     await signOut(auth);

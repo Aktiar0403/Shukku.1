@@ -28,8 +28,8 @@
     "vite": "^6.2.0",
     "web-push": "^3.6.7",
     "@capacitor/push-notifications": "^6.0.0",
-"@capacitor-community/fcm": "^6.0.0",
-"@capacitor-community/calendar": "^3.0.0"
+"@capacitor-community/fcm": "^6.0.0"
+
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

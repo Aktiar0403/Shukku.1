@@ -935,55 +935,42 @@ export default function App() {
     }
   };
 
-  // ── Accept Reminder → add to phone calendar ──
-  const acceptReminder = async (item: Item) => {
-    if (!household || !user) return;
-    try {
-      await updateDoc(doc(db, 'households', household.id, 'items', item.id), {
-        reminderAccepted: true,
-        reminderAcceptedBy: user.uid,
-        updatedAt: serverTimestamp()
-      });
+ const acceptReminder = async (item: Item) => {
+  if (!household || !user) return;
+  try {
+    await updateDoc(doc(db, 'households', household.id, 'items', item.id), {
+      reminderAccepted: true,
+      reminderAcceptedBy: user.uid,
+      updatedAt: serverTimestamp()
+    });
 
-      if (Capacitor.isNativePlatform()) {
-        try {
-          const { Calendar } = await import('@capacitor-community/calendar');
-          const startMs = item.reminderTime.toDate().getTime();
-          await (Calendar as any).createEvent({
-            title: item.text,
-            startDate: startMs,
-            endDate: startMs + 60 * 60 * 1000,
-            notes: `Reminder from PairSync — ${household.name}`
-          });
-        } catch (e) {
-          console.error('Calendar plugin error', e);
-        }
-      } else {
-        // Web fallback: download .ics
-        const start = item.reminderTime.toDate();
-        const end = new Date(start.getTime() + 60 * 60 * 1000);
-        const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-        const ics = [
-          'BEGIN:VCALENDAR', 'VERSION:2.0',
-          'BEGIN:VEVENT',
-          `SUMMARY:${item.text}`,
-          `DTSTART:${fmt(start)}`,
-          `DTEND:${fmt(end)}`,
-          `DESCRIPTION:Reminder from PairSync — ${household.name}`,
-          'END:VEVENT', 'END:VCALENDAR'
-        ].join('\r\n');
-        const blob = new Blob([ics], { type: 'text/calendar' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = `${item.text}.ics`; a.click();
-        URL.revokeObjectURL(url);
-      }
+    // .ics works on both web AND Android — Android opens it in Google Calendar automatically
+    const start = item.reminderTime.toDate();
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const ics = [
+      'BEGIN:VCALENDAR', 'VERSION:2.0',
+      'BEGIN:VEVENT',
+      `SUMMARY:${item.text}`,
+      `DTSTART:${fmt(start)}`,
+      `DTEND:${fmt(end)}`,
+      `DESCRIPTION:Reminder from PairSync — ${household.name}`,
+      'END:VEVENT', 'END:VCALENDAR'
+    ].join('\r\n');
 
-      sendNotification('Reminder accepted! 📅', `${user.displayName} accepted: ${item.text}`);
-    } catch (e) {
-      console.error('acceptReminder failed', e);
-    }
-  };
+    const blob = new Blob([ics], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${item.text}.ics`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    sendNotification('Reminder accepted! 📅', `${user.displayName} accepted: ${item.text}`);
+  } catch (e) {
+    console.error('acceptReminder failed', e);
+  }
+};
 
   const toggleItemStatus = async (item: Item) => {
     if (!household || !user) return;

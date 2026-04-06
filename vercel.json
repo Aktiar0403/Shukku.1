@@ -3,6 +3,16 @@
     {
       "source": "/__/auth/:path*",
       "destination": "https://pairsync-app.firebaseapp.com/__/auth/:path*"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/*.js": {
+      "memory": 128,
+      "maxDuration": 10
+    }
+  }
 }

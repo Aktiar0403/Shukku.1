@@ -799,6 +799,34 @@ export default function App() {
     return onSnapshot(q, snap => setFrequentItems(snap.docs.map(d => ({ id: d.id, ...d.data() } as FrequentItem))));
   }, [household, user]);
 
+  // ── CHANGE 1: Push Notifications ──
+  const subscribeToPush = async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+
+      const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: vapidKey
+      });
+
+      if (auth.currentUser) {
+        await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+          pushSubscription: JSON.parse(JSON.stringify(subscription))
+        });
+      }
+    } catch (err) {
+      console.error('Push subscription failed', err);
+    }
+  };
+
+  useEffect(() => {
+    if (user) subscribeToPush();
+  }, [user]);
+
   // ── Keyboard awareness: scroll input into view ──
   useEffect(() => {
     const onFocus = (e: FocusEvent) => {
@@ -813,18 +841,18 @@ export default function App() {
 
   // ── Auth handlers ──
   const handleLogin = async () => {
-  try {
-    if (Capacitor.isNativePlatform()) {
-      const result = await FirebaseAuthentication.signInWithGoogle();
-      const credential = GoogleAuthProvider.credential(result.credential?.idToken);
-      await signInWithCredential(auth, credential);
-    } else {
-      await signInWithPopup(auth, googleProvider);
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const result = await FirebaseAuthentication.signInWithGoogle();
+        const credential = GoogleAuthProvider.credential(result.credential?.idToken);
+        await signInWithCredential(auth, credential);
+      } else {
+        await signInWithPopup(auth, googleProvider);
+      }
+    } catch (error: any) {
+      console.error('Login failed:', error);
     }
-  } catch (error: any) {
-    console.error('Login failed:', error);
-  }
-};
+  };
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -870,6 +898,30 @@ export default function App() {
     }
   };
 
+  // ── CHANGE 2: Send Notification helper ──
+  const sendNotification = async (title: string, body: string) => {
+    if (!household) return;
+    const membersToNotify = household.members.filter(m => m !== user?.uid);
+    if (!membersToNotify.length) return;
+    try {
+      const usersSnap = await getDocs(
+        query(collection(db, 'users'), where('householdId', '==', household.id))
+      );
+      const subscriptions = usersSnap.docs
+        .filter(d => membersToNotify.includes(d.id) && d.data().pushSubscription)
+        .map(d => d.data().pushSubscription);
+      if (subscriptions.length > 0) {
+        await fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscriptions, title, body, url: '/' })
+        });
+      }
+    } catch (err) {
+      console.error('Notification failed', err);
+    }
+  };
+
   // ── Add Items (multi-line quick add) ──
   const addItems = async () => {
     if (!user || !household || !quickAddText.trim()) return;
@@ -904,6 +956,9 @@ export default function App() {
 
         await addDoc(collection(db, 'households', household.id, 'items'), itemData);
 
+        // ── CHANGE 3a: notify partner on add ──
+        sendNotification('New item added! 🛒', `${user.displayName} added: ${line}`);
+
         // Update frequent items
         const freqRef = doc(db, 'households', household.id, 'frequentItems', line.toLowerCase());
         const freqSnap = await getDoc(freqRef);
@@ -935,6 +990,10 @@ export default function App() {
     await updateDoc(doc(db, 'households', household.id, 'items', item.id), {
       status: newStatus, completedBy: newStatus === 'completed' ? user.uid : null, updatedAt: serverTimestamp()
     });
+    // ── CHANGE 3b: notify partner on complete ──
+    if (newStatus === 'completed') {
+      sendNotification('Item done! ✅', `${user.displayName} completed: ${item.text}`);
+    }
   };
 
   const deleteItem = async (itemId: string) => {

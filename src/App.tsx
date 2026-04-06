@@ -762,14 +762,21 @@ export default function App() {
       // Web Push for browser
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
       try {
-        const registration = await navigator.serviceWorker.register('/sw.js');
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') return;
-        const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: vapidKey
-        });
+       // Register SW and wait until it's actually active
+const registration = await navigator.serviceWorker.register('/sw.js');
+await navigator.serviceWorker.ready; // ← this is the critical fix
+
+const permission = await Notification.requestPermission();
+if (permission !== 'granted') return;
+
+const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+
+// Use the ready registration, not the one from register()
+const readyReg = await navigator.serviceWorker.ready;
+const subscription = await readyReg.pushManager.subscribe({
+  userVisibleOnly: true,
+  applicationServerKey: vapidKey
+});
         if (auth.currentUser) {
           await updateDoc(doc(db, 'users', auth.currentUser.uid), {
             pushSubscription: JSON.parse(JSON.stringify(subscription))

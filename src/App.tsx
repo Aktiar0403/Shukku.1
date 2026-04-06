@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
-import { 
-  auth, db, storage, googleProvider, signInWithPopup, signInWithCredential, GoogleAuthProvider, signOut, onAuthStateChanged, 
-  collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, where, 
+import {
+  auth, db, storage, googleProvider, signInWithPopup, signInWithCredential, GoogleAuthProvider, signOut, onAuthStateChanged,
+  collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, where,
   orderBy, serverTimestamp, Timestamp, addDoc, getDocs, handleFirestoreError, OperationType,
   ref, uploadBytes, getDownloadURL, limit
 } from './firebase';
 import type { User } from './firebase';
-import { 
-  ShoppingBasket, Pill, PenTool, Bell, Plus, CheckCircle2, Circle, Trash2, 
+import {
+  ShoppingBasket, Pill, PenTool, Bell, Plus, CheckCircle2, Circle, Trash2,
   LogOut, Users, Copy, Check, ChevronRight, Loader2, Home, Settings, Camera,
   History, Sparkles, Heart, X, BookOpen, BarChart3, Edit3, Save, Calendar,
   TrendingUp, Package, DollarSign, ChevronDown, Leaf, Beef, MessageSquare,
-  User as UserIcon, Image as ImageIcon, ArrowLeft, Send, StickyNote
+  User as UserIcon, Image as ImageIcon, ArrowLeft, Send, StickyNote, Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -36,11 +36,13 @@ interface Item {
   createdAt: any;
   updatedAt?: any;
   reminderTime?: any;
+  reminderAccepted?: boolean;
+  reminderAcceptedBy?: string;
 }
 
 interface JournalEntry {
   id: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   time: string;
   product: string;
   category: Category;
@@ -91,7 +93,6 @@ const UNITS = ['pcs', 'kg', 'g', 'L', 'mL', 'pack', 'box', 'dozen', 'bottle'];
 
 // ─── Subcomponents ────────────────────────────────────────────────────────────
 
-// Loading Screen
 function LoadingScreen() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-pink-50 via-white to-indigo-50">
@@ -122,24 +123,23 @@ function LoadingScreen() {
   );
 }
 
-// Inline item editor (price + quantity)
-function ItemEditModal({ item, onSave, onClose }: { item: Item; onSave: (id: string, qty: number, unit: string, price: number) => void; onClose: () => void }) {
+function ItemEditModal({ item, onSave, onClose }: {
+  item: Item;
+  onSave: (id: string, qty: number, unit: string, price: number) => void;
+  onClose: () => void;
+}) {
   const [qty, setQty] = useState(item.quantity ?? 1);
   const [unit, setUnit] = useState(item.unit ?? 'pcs');
   const [price, setPrice] = useState(item.price ?? 0);
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 100, opacity: 0 }}
+        initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         onClick={e => e.stopPropagation()}
         className="bg-white w-full max-w-lg rounded-t-[2rem] p-8 shadow-2xl"
@@ -156,23 +156,16 @@ function ItemEditModal({ item, onSave, onClose }: { item: Item; onSave: (id: str
             <X className="w-5 h-5" />
           </button>
         </div>
-
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Qty</label>
-            <input
-              type="number"
-              value={qty}
-              onChange={e => setQty(Number(e.target.value))}
-              min={1}
+            <input type="number" value={qty} onChange={e => setQty(Number(e.target.value))} min={1}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-center font-bold focus:outline-none focus:ring-2 focus:ring-pink-500"
             />
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Unit</label>
-            <select
-              value={unit}
-              onChange={e => setUnit(e.target.value)}
+            <select value={unit} onChange={e => setUnit(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 font-bold focus:outline-none focus:ring-2 focus:ring-pink-500"
             >
               {UNITS.map(u => <option key={u}>{u}</option>)}
@@ -180,17 +173,11 @@ function ItemEditModal({ item, onSave, onClose }: { item: Item; onSave: (id: str
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Price ₹</label>
-            <input
-              type="number"
-              value={price}
-              onChange={e => setPrice(Number(e.target.value))}
-              min={0}
-              step={0.5}
+            <input type="number" value={price} onChange={e => setPrice(Number(e.target.value))} min={0} step={0.5}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-center font-bold focus:outline-none focus:ring-2 focus:ring-pink-500"
             />
           </div>
         </div>
-
         <button
           onClick={() => { onSave(item.id, qty, unit, price); onClose(); }}
           className="w-full bg-pink-500 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-pink-600 transition-all active:scale-95 shadow-lg shadow-pink-100"
@@ -202,38 +189,11 @@ function ItemEditModal({ item, onSave, onClose }: { item: Item; onSave: (id: str
   );
 }
 
-// Reminder notification card
-function ReminderBanner({ item, onDismiss }: { item: Item; onDismiss: () => void }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="mx-6 mt-4 bg-indigo-600 text-white rounded-2xl p-4 flex items-center gap-3 shadow-xl shadow-indigo-200"
-    >
-      <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-        <Calendar className="w-5 h-5" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-black uppercase tracking-widest opacity-70 mb-0.5">Reminder</p>
-        <p className="font-bold truncate">{item.text}</p>
-        <p className="text-xs opacity-60">
-          {item.reminderTime?.toDate().toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-        </p>
-      </div>
-      <button onClick={onDismiss} className="p-2 bg-white/10 rounded-xl hover:bg-white/20 transition-colors">
-        <X className="w-4 h-4" />
-      </button>
-    </motion.div>
-  );
-}
-
 // ─── Journal Tab ─────────────────────────────────────────────────────────────
 
 function JournalTab({ householdId, userId, userName }: { householdId: string; userId: string; userName: string }) {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'chart'>('list');
   const [form, setForm] = useState({
     product: '', category: 'grocery' as Category,
     quantity: 1, unit: 'pcs', price: 0,
@@ -244,10 +204,9 @@ function JournalTab({ householdId, userId, userName }: { householdId: string; us
   useEffect(() => {
     const ref2 = collection(db, 'households', householdId, 'journal');
     const q = query(ref2, orderBy('createdAt', 'desc'), limit(200));
-    const unsub = onSnapshot(q, snap => {
+    return onSnapshot(q, snap => {
       setEntries(snap.docs.map(d => ({ id: d.id, ...d.data() } as JournalEntry)));
     });
-    return unsub;
   }, [householdId]);
 
   const addEntry = async () => {
@@ -264,23 +223,17 @@ function JournalTab({ householdId, userId, userName }: { householdId: string; us
     await deleteDoc(doc(db, 'households', householdId, 'journal', id));
   };
 
-  // Aggregated stats
   const stats = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
     const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
-
-    const totalDay = entries.filter(e => e.date === today).reduce((s, e) => s + (e.price * e.quantity), 0);
-    const totalWeek = entries.filter(e => e.date >= weekAgo).reduce((s, e) => s + (e.price * e.quantity), 0);
-    const totalMonth = entries.filter(e => e.date >= monthAgo).reduce((s, e) => s + (e.price * e.quantity), 0);
-
-    // Per category
+    const totalDay = entries.filter(e => e.date === today).reduce((s, e) => s + e.price * e.quantity, 0);
+    const totalWeek = entries.filter(e => e.date >= weekAgo).reduce((s, e) => s + e.price * e.quantity, 0);
+    const totalMonth = entries.filter(e => e.date >= monthAgo).reduce((s, e) => s + e.price * e.quantity, 0);
     const byCat: Record<string, number> = {};
     entries.filter(e => e.date >= monthAgo).forEach(e => {
       byCat[e.category] = (byCat[e.category] || 0) + e.price * e.quantity;
     });
-
-    // Per day last 7 days
     const byDay: Record<string, number> = {};
     for (let i = 6; i >= 0; i--) {
       const d = new Date(Date.now() - i * 86400000).toISOString().split('T')[0];
@@ -289,7 +242,6 @@ function JournalTab({ householdId, userId, userName }: { householdId: string; us
     entries.filter(e => e.date >= weekAgo).forEach(e => {
       if (byDay[e.date] !== undefined) byDay[e.date] += e.price * e.quantity;
     });
-
     return { totalDay, totalWeek, totalMonth, byCat, byDay };
   }, [entries]);
 
@@ -297,7 +249,6 @@ function JournalTab({ householdId, userId, userName }: { householdId: string; us
 
   return (
     <div className="space-y-6 px-4 pt-4 pb-32">
-      {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Today', value: stats.totalDay, color: 'from-pink-500 to-rose-500' },
@@ -311,21 +262,15 @@ function JournalTab({ householdId, userId, userName }: { householdId: string; us
         ))}
       </div>
 
-      {/* Spending Bar Chart (last 7 days) */}
       <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm font-black text-slate-700 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-pink-500" /> Last 7 Days</p>
-        </div>
+        <p className="text-sm font-black text-slate-700 flex items-center gap-2 mb-4"><TrendingUp className="w-4 h-4 text-pink-500" /> Last 7 Days</p>
         <div className="flex items-end gap-1.5 h-24">
           {Object.entries(stats.byDay).map(([date, val]) => {
             const h = Math.max(4, (val / maxDaySpend) * 96);
             const label = new Date(date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short' });
             return (
               <div key={date} className="flex-1 flex flex-col items-center gap-1">
-                <div
-                  style={{ height: h }}
-                  className="w-full bg-gradient-to-t from-pink-500 to-pink-300 rounded-t-lg transition-all duration-500"
-                />
+                <div style={{ height: h }} className="w-full bg-gradient-to-t from-pink-500 to-pink-300 rounded-t-lg transition-all duration-500" />
                 <p className="text-[9px] font-bold text-slate-400">{label}</p>
               </div>
             );
@@ -333,7 +278,6 @@ function JournalTab({ householdId, userId, userName }: { householdId: string; us
         </div>
       </div>
 
-      {/* By Category */}
       {Object.keys(stats.byCat).length > 0 && (
         <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
           <p className="text-sm font-black text-slate-700 mb-4 flex items-center gap-2"><BarChart3 className="w-4 h-4 text-indigo-500" /> By Category (30d)</p>
@@ -356,15 +300,12 @@ function JournalTab({ householdId, userId, userName }: { householdId: string; us
         </div>
       )}
 
-      {/* Add Entry Button */}
-      <button
-        onClick={() => setShowForm(true)}
+      <button onClick={() => setShowForm(true)}
         className="w-full bg-gradient-to-r from-pink-500 to-indigo-600 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-pink-100 active:scale-95 transition-all flex items-center justify-center gap-2"
       >
         <Plus className="w-5 h-5" /> Log Spending
       </button>
 
-      {/* Entries List */}
       <div className="space-y-3">
         {entries.map(e => (
           <motion.div key={e.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -397,7 +338,6 @@ function JournalTab({ householdId, userId, userName }: { householdId: string; us
         )}
       </div>
 
-      {/* Add Entry Modal */}
       <AnimatePresence>
         {showForm && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -414,17 +354,13 @@ function JournalTab({ householdId, userId, userName }: { householdId: string; us
                 <h3 className="text-lg font-black text-slate-900">Log Spending</h3>
                 <button onClick={() => setShowForm(false)} className="p-2 text-slate-300 hover:text-slate-600 rounded-xl"><X className="w-5 h-5" /></button>
               </div>
-
               <input type="text" placeholder="Product name" value={form.product}
                 onChange={e => setForm(f => ({ ...f, product: e.target.value }))}
                 className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-semibold focus:outline-none focus:ring-2 focus:ring-pink-500"
               />
-
-              {/* Category */}
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {(Object.keys(categoryMeta) as Category[]).map(cat => (
-                  <button key={cat} type="button"
-                    onClick={() => setForm(f => ({ ...f, category: cat }))}
+                  <button key={cat} type="button" onClick={() => setForm(f => ({ ...f, category: cat }))}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border whitespace-nowrap transition-all ${
                       form.category === cat ? `${categoryMeta[cat].color} shadow` : 'bg-white text-slate-400 border-slate-100'
                     }`}
@@ -433,7 +369,6 @@ function JournalTab({ householdId, userId, userName }: { householdId: string; us
                   </button>
                 ))}
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Date</label>
@@ -448,7 +383,6 @@ function JournalTab({ householdId, userId, userName }: { householdId: string; us
                   />
                 </div>
               </div>
-
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Qty</label>
@@ -471,7 +405,6 @@ function JournalTab({ householdId, userId, userName }: { householdId: string; us
                   />
                 </div>
               </div>
-
               <button onClick={addEntry}
                 className="w-full bg-pink-500 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-pink-600 active:scale-95 transition-all shadow-lg shadow-pink-100"
               >
@@ -487,7 +420,9 @@ function JournalTab({ householdId, userId, userName }: { householdId: string; us
 
 // ─── Notes Tab ────────────────────────────────────────────────────────────────
 
-function NotesTab({ householdId, userId, userName, userPhoto }: { householdId: string; userId: string; userName: string; userPhoto?: string }) {
+function NotesTab({ householdId, userId, userName, userPhoto }: {
+  householdId: string; userId: string; userName: string; userPhoto?: string;
+}) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [text, setText] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -559,8 +494,6 @@ function NotesTab({ householdId, userId, userName, userPhoto }: { householdId: s
         })}
         <div ref={bottomRef} />
       </div>
-
-      {/* Input */}
       <div className="px-4 pb-4 pt-2 bg-slate-50 border-t border-slate-100">
         <div className="flex gap-3 items-end bg-white rounded-2xl border border-slate-200 p-2 shadow-sm">
           <textarea
@@ -604,7 +537,6 @@ function ProfileTab({ user, household, onLogout }: { user: User; household: Hous
 
   return (
     <div className="px-4 pt-6 pb-32 space-y-6">
-      {/* Avatar + Name */}
       <div className="flex flex-col items-center gap-4">
         <div className="relative">
           <img src={user.photoURL || ''} alt="" className="w-24 h-24 rounded-[2rem] border-4 border-white shadow-2xl" />
@@ -624,23 +556,20 @@ function ProfileTab({ user, household, onLogout }: { user: User; household: Hous
         )}
       </div>
 
-      {/* Household Card */}
       <div className="bg-gradient-to-br from-pink-50 to-indigo-50 rounded-3xl p-6 border border-pink-100">
         <div className="flex items-center gap-2 mb-4">
           <Heart className="w-5 h-5 text-pink-500 fill-pink-500" />
           <h3 className="font-black text-slate-800">{household.name}</h3>
         </div>
-
         <div className="bg-white rounded-2xl p-4 mb-4 border border-pink-100">
           <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Invite Code</p>
           <p className="font-black text-2xl text-slate-900 tracking-widest">{household.inviteCode}</p>
         </div>
-
         <div>
           <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Relationship Note</p>
           {editing ? (
             <textarea value={relDesc} onChange={e => setRelDesc(e.target.value)}
-              placeholder="Describe your relationship, how you met, a fun fact…"
+              placeholder="Describe your relationship…"
               rows={3}
               className="w-full bg-white border border-pink-200 rounded-2xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
             />
@@ -652,7 +581,6 @@ function ProfileTab({ user, household, onLogout }: { user: User; household: Hous
         </div>
       </div>
 
-      {/* Members */}
       <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm">
         <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Members ({household.members.length})</p>
         {household.members.map((m, i) => (
@@ -666,7 +594,6 @@ function ProfileTab({ user, household, onLogout }: { user: User; household: Hous
         ))}
       </div>
 
-      {/* Actions */}
       <div className="flex gap-3">
         {editing ? (
           <>
@@ -728,7 +655,6 @@ export default function App() {
   const [activeListTab, setActiveListTab] = useState<'all' | Category | 'history'>('all');
   const [mainTab, setMainTab] = useState<MainTab>('list');
   const [editingItem, setEditingItem] = useState<Item | null>(null);
-  const [dismissedReminders, setDismissedReminders] = useState<Set<string>>(new Set());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const quickAddRef = useRef<HTMLTextAreaElement>(null);
@@ -768,7 +694,7 @@ export default function App() {
 
   const fetchHousehold = (householdId: string) => {
     const householdRef = doc(db, 'households', householdId);
-    const unsubscribe = onSnapshot(householdRef, (docSnap) => {
+    return onSnapshot(householdRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (data.members.includes(auth.currentUser?.uid)) {
@@ -784,7 +710,6 @@ export default function App() {
         setLoading(false);
       }
     });
-    return unsubscribe;
   };
 
   useEffect(() => {
@@ -799,35 +724,68 @@ export default function App() {
     return onSnapshot(q, snap => setFrequentItems(snap.docs.map(d => ({ id: d.id, ...d.data() } as FrequentItem))));
   }, [household, user]);
 
-  // ── CHANGE 1: Push Notifications ──
-  const subscribeToPush = async () => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    try {
-      const registration = await navigator.serviceWorker.register('/sw.js');
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') return;
+  // ── Push Notifications: Web Push (browser) + FCM (APK) ──
+  const setupNotifications = async () => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const { PushNotifications } = await import('@capacitor/push-notifications');
+        const { FCM } = await import('@capacitor-community/fcm');
 
-      const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: vapidKey
-      });
+        const permResult = await PushNotifications.requestPermissions();
+        if (permResult.receive !== 'granted') return;
 
-      if (auth.currentUser) {
-        await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-          pushSubscription: JSON.parse(JSON.stringify(subscription))
+        await PushNotifications.register();
+
+        PushNotifications.addListener('registration', async () => {
+          try {
+            const { token } = await FCM.getToken();
+            if (auth.currentUser) {
+              await updateDoc(doc(db, 'users', auth.currentUser.uid), { fcmToken: token });
+            }
+          } catch (e) {
+            console.error('FCM getToken failed', e);
+          }
         });
+
+        PushNotifications.addListener('registrationError', err => {
+          console.error('FCM registration error:', err);
+        });
+
+        PushNotifications.addListener('pushNotificationReceived', notification => {
+          console.log('Push received:', notification);
+        });
+
+      } catch (e) {
+        console.error('FCM setup failed', e);
       }
-    } catch (err) {
-      console.error('Push subscription failed', err);
+    } else {
+      // Web Push for browser
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+        const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: vapidKey
+        });
+        if (auth.currentUser) {
+          await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+            pushSubscription: JSON.parse(JSON.stringify(subscription))
+          });
+        }
+      } catch (err) {
+        console.error('Web push subscription failed', err);
+      }
     }
   };
 
   useEffect(() => {
-    if (user) subscribeToPush();
+    if (user) setupNotifications();
   }, [user]);
 
-  // ── Keyboard awareness: scroll input into view ──
+  // ── Keyboard awareness ──
   useEffect(() => {
     const onFocus = (e: FocusEvent) => {
       const el = e.target as HTMLElement;
@@ -854,9 +812,7 @@ export default function App() {
     }
   };
 
-  const handleLogout = async () => {
-    await signOut(auth);
-  };
+  const handleLogout = async () => { await signOut(auth); };
 
   // ── Household ──
   const createHousehold = async () => {
@@ -889,7 +845,6 @@ export default function App() {
     setLoading(false);
   };
 
-  // ── Image ──
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
       const file = e.target.files[0];
@@ -898,7 +853,7 @@ export default function App() {
     }
   };
 
-  // ── CHANGE 2: Send Notification helper ──
+  // ── Send Notification (Web Push + FCM) ──
   const sendNotification = async (title: string, body: string) => {
     if (!household) return;
     const membersToNotify = household.members.filter(m => m !== user?.uid);
@@ -907,14 +862,19 @@ export default function App() {
       const usersSnap = await getDocs(
         query(collection(db, 'users'), where('householdId', '==', household.id))
       );
-      const subscriptions = usersSnap.docs
-        .filter(d => membersToNotify.includes(d.id) && d.data().pushSubscription)
-        .map(d => d.data().pushSubscription);
-      if (subscriptions.length > 0) {
+      const webSubscriptions: any[] = [];
+      const fcmTokens: string[] = [];
+      usersSnap.docs
+        .filter(d => membersToNotify.includes(d.id))
+        .forEach(d => {
+          if (d.data().pushSubscription) webSubscriptions.push(d.data().pushSubscription);
+          if (d.data().fcmToken) fcmTokens.push(d.data().fcmToken);
+        });
+      if (webSubscriptions.length > 0 || fcmTokens.length > 0) {
         await fetch('/api/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ subscriptions, title, body, url: '/' })
+          body: JSON.stringify({ subscriptions: webSubscriptions, fcmTokens, title, body, url: '/' })
         });
       }
     } catch (err) {
@@ -922,44 +882,36 @@ export default function App() {
     }
   };
 
-  // ── Add Items (multi-line quick add) ──
+  // ── Add Items ──
   const addItems = async () => {
     if (!user || !household || !quickAddText.trim()) return;
     setUploading(true);
     try {
       const lines = quickAddText.split('\n').map(l => l.trim()).filter(Boolean);
-
       for (const line of lines) {
         let imageUrl = '';
-        // Only upload image for the first item if single line
         if (lines.length === 1 && selectedImage) {
           const storageRef = ref(storage, `households/${household.id}/items/${Date.now()}_${selectedImage.name}`);
           await uploadBytes(storageRef, selectedImage);
           imageUrl = await getDownloadURL(storageRef);
         }
-
         const itemData: any = {
-          text: line,
-          category: newItemCategory,
-          status: 'pending',
-          addedBy: user.uid,
-          imageUrl,
-          quantity,
-          unit,
-          price,
+          text: line, category: newItemCategory, status: 'pending',
+          addedBy: user.uid, imageUrl, quantity, unit, price,
           createdAt: serverTimestamp()
         };
-
         if (newItemCategory === 'reminder' && reminderTime) {
           itemData.reminderTime = Timestamp.fromDate(new Date(reminderTime));
+          itemData.reminderAccepted = false;
+          itemData.reminderAcceptedBy = null;
         }
-
         await addDoc(collection(db, 'households', household.id, 'items'), itemData);
-
-        // ── CHANGE 3a: notify partner on add ──
-        sendNotification('New item added! 🛒', `${user.displayName} added: ${line}`);
-
-        // Update frequent items
+        sendNotification(
+          newItemCategory === 'reminder' ? 'New reminder! 📅' : 'New item added! 🛒',
+          `${user.displayName} added: ${line}${newItemCategory === 'reminder' && reminderTime
+            ? ` — ${new Date(reminderTime).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+            : ''}`
+        );
         const freqRef = doc(db, 'households', household.id, 'frequentItems', line.toLowerCase());
         const freqSnap = await getDoc(freqRef);
         if (freqSnap.exists()) {
@@ -968,7 +920,6 @@ export default function App() {
           await setDoc(freqRef, { text: line, category: newItemCategory, count: 1 });
         }
       }
-
       setQuickAddText('');
       setSelectedImage(null);
       setImagePreview(null);
@@ -984,13 +935,64 @@ export default function App() {
     }
   };
 
+  // ── Accept Reminder → add to phone calendar ──
+  const acceptReminder = async (item: Item) => {
+    if (!household || !user) return;
+    try {
+      await updateDoc(doc(db, 'households', household.id, 'items', item.id), {
+        reminderAccepted: true,
+        reminderAcceptedBy: user.uid,
+        updatedAt: serverTimestamp()
+      });
+
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { Calendar } = await import('@capacitor-community/calendar');
+          const startMs = item.reminderTime.toDate().getTime();
+          await (Calendar as any).createEvent({
+            title: item.text,
+            startDate: startMs,
+            endDate: startMs + 60 * 60 * 1000,
+            notes: `Reminder from PairSync — ${household.name}`
+          });
+        } catch (e) {
+          console.error('Calendar plugin error', e);
+        }
+      } else {
+        // Web fallback: download .ics
+        const start = item.reminderTime.toDate();
+        const end = new Date(start.getTime() + 60 * 60 * 1000);
+        const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        const ics = [
+          'BEGIN:VCALENDAR', 'VERSION:2.0',
+          'BEGIN:VEVENT',
+          `SUMMARY:${item.text}`,
+          `DTSTART:${fmt(start)}`,
+          `DTEND:${fmt(end)}`,
+          `DESCRIPTION:Reminder from PairSync — ${household.name}`,
+          'END:VEVENT', 'END:VCALENDAR'
+        ].join('\r\n');
+        const blob = new Blob([ics], { type: 'text/calendar' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `${item.text}.ics`; a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      sendNotification('Reminder accepted! 📅', `${user.displayName} accepted: ${item.text}`);
+    } catch (e) {
+      console.error('acceptReminder failed', e);
+    }
+  };
+
   const toggleItemStatus = async (item: Item) => {
     if (!household || !user) return;
     const newStatus = item.status === 'pending' ? 'completed' : 'pending';
     await updateDoc(doc(db, 'households', household.id, 'items', item.id), {
-      status: newStatus, completedBy: newStatus === 'completed' ? user.uid : null, updatedAt: serverTimestamp()
+      status: newStatus,
+      completedBy: newStatus === 'completed' ? user.uid : null,
+      updatedAt: serverTimestamp()
     });
-    // ── CHANGE 3b: notify partner on complete ──
     if (newStatus === 'completed') {
       sendNotification('Item done! ✅', `${user.displayName} completed: ${item.text}`);
     }
@@ -1003,7 +1005,9 @@ export default function App() {
 
   const saveItemEdit = async (id: string, qty: number, u: string, p: number) => {
     if (!household) return;
-    await updateDoc(doc(db, 'households', household.id, 'items', id), { quantity: qty, unit: u, price: p, updatedAt: serverTimestamp() });
+    await updateDoc(doc(db, 'households', household.id, 'items', id), {
+      quantity: qty, unit: u, price: p, updatedAt: serverTimestamp()
+    });
   };
 
   const copyInviteCode = () => {
@@ -1020,19 +1024,6 @@ export default function App() {
     return items.filter(i => i.category === activeListTab && i.status === 'pending');
   }, [items, activeListTab]);
 
-  // Upcoming reminders from partner
-  const partnerReminders = useMemo(() => {
-    if (!user) return [];
-    const now = new Date();
-    return items.filter(i =>
-      i.category === 'reminder' &&
-      i.addedBy !== user.uid &&
-      i.reminderTime &&
-      i.reminderTime.toDate() > now &&
-      !dismissedReminders.has(i.id)
-    );
-  }, [items, user, dismissedReminders]);
-
   // ─── Render: Loading ───
   if (!authReady || loading) return <LoadingScreen />;
 
@@ -1042,7 +1033,6 @@ export default function App() {
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center overflow-hidden relative">
         <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-pink-100 rounded-full blur-3xl opacity-50" />
         <div className="absolute bottom-[-10%] right-[-10%] w-64 h-64 bg-indigo-100 rounded-full blur-3xl opacity-50" />
-
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring' }}
           className="w-24 h-24 bg-gradient-to-br from-pink-500 to-indigo-600 rounded-3xl flex items-center justify-center mb-8 shadow-2xl shadow-pink-200 relative"
         >
@@ -1051,14 +1041,12 @@ export default function App() {
             <Sparkles className="w-4 h-4 text-amber-400" />
           </div>
         </motion.div>
-
         <h1 className="text-5xl font-extrabold text-slate-900 mb-4 tracking-tight">
           Pair<span className="text-pink-500">Sync</span>
         </h1>
         <p className="text-slate-500 max-w-sm mb-12 text-lg leading-relaxed">
           The most beautiful way for couples to stay organized together.
         </p>
-
         <button onClick={handleLogin}
           className="flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all active:scale-95 shadow-xl w-full max-w-xs"
         >
@@ -1085,7 +1073,6 @@ export default function App() {
               <LogOut className="w-5 h-5" />
             </button>
           </div>
-
           {!showJoinForm ? (
             <div className="space-y-6">
               <div className="p-6 bg-pink-50 rounded-3xl border border-pink-100">
@@ -1152,13 +1139,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* Partner Reminder Banners */}
-      <AnimatePresence>
-        {partnerReminders.slice(0, 1).map(item => (
-          <ReminderBanner key={item.id} item={item} onDismiss={() => setDismissedReminders(s => new Set([...s, item.id]))} />
-        ))}
-      </AnimatePresence>
-
       {/* Main Content */}
       <main className="max-w-2xl mx-auto">
         {mainTab === 'list' && (
@@ -1169,22 +1149,19 @@ export default function App() {
                 <div className="flex-1 relative">
                   <textarea
                     ref={quickAddRef}
-                    placeholder={"What do we need?\nType one item per line to add multiple…"}
+                    placeholder={"What do we need?\nType one item per line…"}
                     value={quickAddText}
                     onChange={e => setQuickAddText(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); addItems(); }
-                    }}
+                    onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); addItems(); } }}
                     rows={quickAddText.split('\n').length > 1 ? Math.min(quickAddText.split('\n').length + 1, 5) : 2}
                     className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none placeholder:text-slate-300 transition-all"
                   />
                   {quickAddText.split('\n').filter(Boolean).length > 1 && (
                     <span className="absolute bottom-2 right-3 text-[10px] text-slate-400 font-bold">
-                      {quickAddText.split('\n').filter(Boolean).length} items • Ctrl+Enter to add
+                      {quickAddText.split('\n').filter(Boolean).length} items • Ctrl+Enter
                     </span>
                   )}
                 </div>
-
                 <div className="flex flex-col gap-2">
                   <button type="button" onClick={() => fileInputRef.current?.click()}
                     className={`p-3 rounded-xl border transition-all ${imagePreview ? 'bg-pink-50 border-pink-200 text-pink-500' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-pink-500'}`}
@@ -1261,10 +1238,9 @@ export default function App() {
                           />
                         </div>
                       </div>
-
                       {newItemCategory === 'reminder' && (
                         <div>
-                          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Reminder Time</label>
+                          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Reminder Date & Time</label>
                           <input type="datetime-local" value={reminderTime} onChange={e => setReminderTime(e.target.value)}
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
                           />
@@ -1316,56 +1292,96 @@ export default function App() {
                     <p className="text-slate-300 text-sm">{activeListTab === 'history' ? 'Completed items show here' : 'Add something above'}</p>
                   </motion.div>
                 ) : filteredItems.map(item => (
-                  <motion.div key={item.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-                    className={`group bg-white p-4 rounded-2xl border transition-all flex items-center gap-3 ${
-                      item.status === 'completed' ? 'border-slate-50 opacity-60' : 'border-slate-100 shadow-sm hover:shadow-md'
+                  <motion.div key={item.id} layout
+                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+                    className={`group bg-white p-4 rounded-2xl border transition-all flex flex-col gap-2 ${
+                      item.status === 'completed'
+                        ? 'border-slate-50 opacity-60'
+                        : item.category === 'reminder'
+                          ? 'border-indigo-100 shadow-sm shadow-indigo-50'
+                          : 'border-slate-100 shadow-sm hover:shadow-md'
                     }`}
                   >
-                    <button onClick={() => toggleItemStatus(item)}
-                      className={`transition-all transform active:scale-90 flex-shrink-0 ${item.status === 'completed' ? 'text-emerald-500' : 'text-slate-200 hover:text-pink-500'}`}
-                    >
-                      {item.status === 'completed' ? <CheckCircle2 className="w-7 h-7" /> : <Circle className="w-7 h-7" />}
-                    </button>
+                    {/* Top row */}
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => toggleItemStatus(item)}
+                        className={`transition-all transform active:scale-90 flex-shrink-0 ${item.status === 'completed' ? 'text-emerald-500' : 'text-slate-200 hover:text-pink-500'}`}
+                      >
+                        {item.status === 'completed' ? <CheckCircle2 className="w-7 h-7" /> : <Circle className="w-7 h-7" />}
+                      </button>
 
-                    {item.imageUrl && (
-                      <div className="w-12 h-12 rounded-xl overflow-hidden shadow-sm flex-shrink-0">
-                        <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                      {item.imageUrl && (
+                        <div className="w-12 h-12 rounded-xl overflow-hidden shadow-sm flex-shrink-0">
+                          <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-slate-900 font-bold truncate ${item.status === 'completed' ? 'line-through text-slate-300' : ''}`}>
+                          {item.text}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className={`text-[10px] uppercase tracking-widest font-black px-1.5 py-0.5 rounded-lg border ${categoryMeta[item.category]?.color || ''}`}>
+                            {categoryMeta[item.category]?.label || item.category}
+                          </span>
+                          {(item.quantity || item.unit) && (
+                            <span className="text-[10px] font-bold text-slate-400">{item.quantity} {item.unit}</span>
+                          )}
+                          {item.price ? <span className="text-[10px] font-black text-pink-400">₹{item.price}</span> : null}
+                          {item.reminderTime && (
+                            <span className="text-[10px] font-bold text-indigo-400 flex items-center gap-0.5">
+                              <Clock className="w-2.5 h-2.5" />
+                              {item.reminderTime.toDate().toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    )}
 
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-slate-900 font-bold truncate ${item.status === 'completed' ? 'line-through text-slate-300' : ''}`}>
-                        {item.text}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className={`text-[10px] uppercase tracking-widest font-black px-1.5 py-0.5 rounded-lg border ${categoryMeta[item.category]?.color || ''}`}>
-                          {categoryMeta[item.category]?.label || item.category}
-                        </span>
-                        {(item.quantity || item.unit) && (
-                          <span className="text-[10px] font-bold text-slate-400">{item.quantity} {item.unit}</span>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => setEditingItem(item)}
+                          className="opacity-0 group-hover:opacity-100 p-2 text-slate-200 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => deleteItem(item.id)}
+                          className="opacity-0 group-hover:opacity-100 p-2 text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Reminder accept row — only for reminder category with a time set */}
+                    {item.category === 'reminder' && item.reminderTime && item.status !== 'completed' && (
+                      <div className="pl-10">
+                        {/* Partner sees Accept button */}
+                        {item.addedBy !== user.uid && !item.reminderAccepted && (
+                          <button
+                            onClick={() => acceptReminder(item)}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-widest active:scale-95 transition-all shadow-md shadow-indigo-100"
+                          >
+                            <Calendar className="w-3.5 h-3.5" /> Accept & Save to Calendar
+                          </button>
                         )}
-                        {item.price ? <span className="text-[10px] font-black text-pink-400">₹{item.price}</span> : null}
-                        {item.reminderTime && (
-                          <span className="text-[10px] font-bold text-indigo-400 flex items-center gap-0.5">
-                            <Calendar className="w-2.5 h-2.5" />
-                            {item.reminderTime.toDate().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        {/* Partner already accepted */}
+                        {item.reminderAccepted && item.reminderAcceptedBy !== user.uid && (
+                          <span className="text-[10px] font-black text-indigo-400 flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Partner added to their calendar
+                          </span>
+                        )}
+                        {item.reminderAccepted && item.reminderAcceptedBy === user.uid && (
+                          <span className="text-[10px] font-black text-indigo-400 flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Saved to your calendar
+                          </span>
+                        )}
+                        {/* Creator waiting */}
+                        {item.addedBy === user.uid && !item.reminderAccepted && (
+                          <span className="text-[10px] font-bold text-slate-400 italic flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> Waiting for partner to accept…
                           </span>
                         )}
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button onClick={() => setEditingItem(item)}
-                        className="opacity-0 group-hover:opacity-100 p-2 text-slate-200 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => deleteItem(item.id)}
-                        className="opacity-0 group-hover:opacity-100 p-2 text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    )}
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -1376,11 +1392,9 @@ export default function App() {
         {mainTab === 'journal' && household && user && (
           <JournalTab householdId={household.id} userId={user.uid} userName={user.displayName || 'You'} />
         )}
-
         {mainTab === 'notes' && household && user && (
           <NotesTab householdId={household.id} userId={user.uid} userName={user.displayName || 'You'} userPhoto={user.photoURL || undefined} />
         )}
-
         {mainTab === 'profile' && household && user && (
           <ProfileTab user={user} household={household} onLogout={handleLogout} />
         )}
@@ -1441,10 +1455,6 @@ export default function App() {
             >
               <div className={`relative ${mainTab === tab ? 'scale-110' : ''} transition-transform`}>
                 {icon}
-                {tab === 'notes' && (() => {
-                  // Would need notes count, skip for now
-                  return null;
-                })()}
               </div>
               <span className={`text-[9px] font-black uppercase tracking-widest ${mainTab === tab ? 'text-pink-500' : 'text-slate-300'}`}>
                 {label}
